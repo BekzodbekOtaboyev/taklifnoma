@@ -354,6 +354,74 @@ html {
   transform: scale(1.15);
 }
 
+/* Ovoz balandligi boshqaruvi (Sal pastroq qilib sozlangan: 30%) */
+.music-volume-box {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 6px 12px;
+  border-radius: 25px;
+  border: 1px solid rgba(188, 136, 135, 0.45);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  transition: all 0.3s ease;
+}
+
+.music-volume-box:hover {
+  background: rgba(255, 255, 255, 1);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+}
+
+.music-volume-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 65px;
+  height: 5px;
+  border-radius: 5px;
+  background: #ecd3d2;
+  outline: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.music-volume-slider:hover {
+  background: #dfb6b5;
+}
+
+.music-volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #996E6D;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  transition: transform 0.15s ease;
+}
+
+.music-volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.music-volume-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #996E6D;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+@media (max-width: 480px) {
+  .music-volume-box {
+    display: none;
+  }
+}
+
 /* YouTube Mini Video Pleer Konteyneri */
 .yt-player-container {
   position: fixed;

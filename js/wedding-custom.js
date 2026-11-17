@@ -8,8 +8,9 @@
 
   // --- 1. O'zgaruvchilar va Ma'lumotlar ---
   var TARGET_DATE_STRING = "2026/11/21 18:00:00"; // 21-Noyabr 18:00
-  var YT_VIDEO_ID = "AFRrBAMtJe0"; // Ziyoda - Kelibdi (https://www.youtube.com/watch?v=AFRrBAMtJe0)
+  var YT_VIDEO_ID = "AFRrBAMtJe0"; // Ziyoda - Kelibdi
   var isAudioPlaying = false;
+  var currentVolume = 0.35; // Foydalanuvchi so'raganidek musiqani sal pastroq, yoqimli fonda o'rnatamiz (35%)
   var audioContext = null;
   var musicTimer = null;
   var petalsRunning = true;
@@ -38,6 +39,9 @@
         events: {
           onReady: function (event) {
             ytPlayerReady = true;
+            try {
+              event.target.setVolume(Math.round(currentVolume * 100));
+            } catch (e) {}
             if (shouldPlayWhenReady) {
               event.target.playVideo();
             }
@@ -45,7 +49,6 @@
           onStateChange: function (event) {
             if (event.data === YT.PlayerState.PLAYING) {
               setMusicUIState(true);
-              stopFallbackAudio();
             } else if (event.data === YT.PlayerState.PAUSED) {
               setMusicUIState(false);
             } else if (event.data === YT.PlayerState.ENDED) {
@@ -53,8 +56,7 @@
             }
           },
           onError: function (err) {
-            console.log("YouTube pleerida xatolik yuz berdi, zaxira audiodan foydalaniladi:", err);
-            startFallbackAudio();
+            console.log("YouTube pleeri xatoligi:", err);
           }
         }
       });
@@ -100,7 +102,7 @@
       }, 1000);
     }
 
-    // Musiqani boshlash (Ziyoda - Kelibdi)
+    // Musiqani sal pastroq va yoqimli hajmda boshlash (Ziyoda - Kelibdi)
     toggleMusic(true);
 
     // Qaynoq qutlovlar va yuraklar otilishi (Confetti)
@@ -114,6 +116,19 @@
   };
 
   // --- 4. Musiqani Boshqarish (Ziyoda — Kelibdi) ---
+  window.changeVolume = function (vol) {
+    currentVolume = parseFloat(vol);
+    var audioTag = document.getElementById("weddingAudio");
+    if (audioTag) {
+      audioTag.volume = currentVolume;
+    }
+    if (ytPlayer && ytPlayerReady && typeof ytPlayer.setVolume === "function") {
+      try {
+        ytPlayer.setVolume(Math.round(currentVolume * 100));
+      } catch (e) {}
+    }
+  };
+
   window.toggleMusic = function (forcePlay) {
     var audioTag = document.getElementById("weddingAudio");
 
@@ -126,24 +141,24 @@
     }
 
     if (isAudioPlaying) {
-      // 1. Asosiy va kafolatlangan audio: mahalliy Ziyoda - Kelibdi fayli
+      // 1. Asosiy va kafolatlangan audio: mahalliy Ziyoda - Kelibdi fayli (sal pastroq sokin hajmda)
       if (audioTag) {
-        audioTag.volume = 1.0;
+        audioTag.volume = currentVolume;
         var playPromise = audioTag.play();
         if (playPromise !== undefined) {
           playPromise.then(function () {
             setMusicUIState(true);
           }).catch(function (err) {
             console.log("Audio autoplay cheklovi yoki xatolik:", err);
-            // Foydalanuvchiga musiqani yoqish haqida eslatma
             showToast("Musiqani yoqish uchun pastdagi musiqa tugmasini bosing 🎵");
           });
         }
       }
 
-      // 2. Agar YouTube mini pleeri ochilgan bo'lsa, uni ham sinxron yurgazish
+      // 2. Agar YouTube mini pleeri ochilgan bo'lsa
       if (ytPlayer && ytPlayerReady && typeof ytPlayer.playVideo === "function") {
         try {
+          ytPlayer.setVolume(Math.round(currentVolume * 100));
           ytPlayer.playVideo();
         } catch (e) {}
       }
@@ -164,78 +179,7 @@
     }
   };
 
-  // Zaxira audio (agar YouTube ochilmasa yoki oflayn bo'lsa)
-  function startFallbackAudio() {
-    var audioTag = document.getElementById("weddingAudio");
-    if (audioTag) {
-      audioTag.play().catch(function () {
-        initAudioSynth();
-        clearTimeout(musicTimer);
-        runMelodyLoop();
-      });
-    } else {
-      initAudioSynth();
-      clearTimeout(musicTimer);
-      runMelodyLoop();
-    }
-  }
-
-  function stopFallbackAudio() {
-    var audioTag = document.getElementById("weddingAudio");
-    if (audioTag) {
-      try { audioTag.pause(); } catch (e) {}
-    }
-    clearTimeout(musicTimer);
-  }
-
-  // --- 5. Romantik Sintezator (Zaxira) ---
-  function initAudioSynth() {
-    try {
-      var AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!audioContext && AudioCtx) {
-        audioContext = new AudioCtx();
-      }
-      if (audioContext && audioContext.state === "suspended") {
-        audioContext.resume();
-      }
-    } catch (e) {
-      console.log("AudioContext not supported", e);
-    }
-  }
-
-  var melodyNotes = [
-    587.33, 440.00, 493.88, 369.99, 392.00, 293.66, 392.00, 440.00,
-    587.33, 659.25, 739.99, 587.33, 493.88, 440.00, 392.00, 440.00,
-    739.99, 659.25, 587.33, 523.25, 493.88, 440.00, 392.00, 369.99,
-    392.00, 440.00, 493.88, 587.33, 659.25, 739.99, 880.00, 739.99
-  ];
-  var noteIndex = 0;
-
-  function playHarpNote(freq) {
-    if (!audioContext || !isAudioPlaying) return;
-    try {
-      var osc = audioContext.createOscillator();
-      var gain = audioContext.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(freq, audioContext.currentTime);
-      gain.gain.setValueAtTime(0.12, audioContext.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 1.2);
-      osc.connect(gain);
-      gain.connect(audioContext.destination);
-      osc.start();
-      osc.stop(audioContext.currentTime + 1.2);
-    } catch (e) {}
-  }
-
-  function runMelodyLoop() {
-    if (!isAudioPlaying) return;
-    var freq = melodyNotes[noteIndex % melodyNotes.length];
-    playHarpNote(freq);
-    noteIndex++;
-    musicTimer = setTimeout(runMelodyLoop, 450);
-  }
-
-  // --- 4. Jonli Hisoblagich (Countdown Timer) ---
+  // --- 5. Jonli Hisoblagich (Countdown Timer) ---
   function initCountdown() {
     var targetDate = new Date(TARGET_DATE_STRING).getTime();
 
@@ -280,7 +224,7 @@
     setInterval(update, 1000);
   }
 
-  // --- 5. Tushayotgan Gul Barglari Animatsiyasi (Falling Petals Canvas) ---
+  // --- 6. Tushayotgan Gul Barglari Animatsiyasi (Falling Petals Canvas) ---
   function initPetalsCanvas() {
     var canvas = document.getElementById("petalsCanvas");
     if (!canvas) return;
@@ -297,11 +241,11 @@
     var petals = [];
 
     var colors = [
-      "rgba(255, 183, 197, 0.75)", // Mayin pushti
-      "rgba(244, 202, 211, 0.7)",  // Gulbarg
-      "rgba(216, 169, 168, 0.75)", // Och atirgul
-      "rgba(255, 230, 235, 0.8)",  // Oq-pushti
-      "rgba(218, 165, 32, 0.6)"    // Zarrin oltin zar
+      "rgba(255, 183, 197, 0.75)",
+      "rgba(244, 202, 211, 0.7)",
+      "rgba(216, 169, 168, 0.75)",
+      "rgba(255, 230, 235, 0.8)",
+      "rgba(218, 165, 32, 0.6)"
     ];
 
     for (var i = 0; i < petalCount; i++) {
@@ -347,21 +291,9 @@
     }
 
     draw();
-
-    window.togglePetals = function() {
-      petalsRunning = !petalsRunning;
-      var btn = document.getElementById("petalsToggleBtn");
-      if (petalsRunning) {
-        if (btn) btn.innerText = "🌸 Gullar: Yoqilgan";
-        draw();
-      } else {
-        if (btn) btn.innerText = "🌸 Gullar: O'chirilgan";
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    };
   }
 
-  // --- 6. Yuraklar Otilishi (Heart Confetti Burst) ---
+  // --- 7. Yuraklar Otilishi (Heart Confetti Burst) ---
   function burstHearts(originX, originY) {
     var count = 30;
     var container = document.body;
@@ -397,7 +329,7 @@
     }
   }
 
-  // --- 7. Taqvimga Saqlash (.ics fayl yuklash) ---
+  // --- 8. Taqvimga Saqlash (.ics fayl yuklash) ---
   window.downloadICS = function () {
     var icsData = [
       "BEGIN:VCALENDAR",
@@ -408,7 +340,7 @@
       "BEGIN:VEVENT",
       "SUMMARY:Muhammadali va Hayotxonning Visol Oqshomi",
       "DESCRIPTION:Ikki qalb, bir taqdir, bir umrga tutashgan muhabbat... Sizni visol oqshomimizda kutamiz!",
-      "LOCATION:Xolmurod to\\'yxonasi",
+      "LOCATION:Xolmurod to\\'yxonasi\\, G62X+HJ2\\, Unnamed Road\\, Khayravat\\, Oʻzbekiston",
       "DTSTART:20261121T130000Z",
       "DTEND:20261121T180000Z",
       "STATUS:CONFIRMED",
@@ -428,12 +360,12 @@
     showToast("Taqvim fayli (.ics) yuklab olindi! Telefoningiz taqvimiga qo'shishingiz mumkin.");
   };
 
-  // --- 8. Manzilni Nusxalash ---
+  // --- 9. Manzilni Nusxalash ---
   window.copyAddress = function () {
-    var address = "Xolmurod to'yxonasi, 21-22 noyabr, 18:00";
+    var address = "Xolmurod to'yxonasi, G62X+HJ2, Unnamed Road, Khayravat, Oʻzbekiston";
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(address).then(function () {
-        showToast("Manzil nusxalandi: Xolmurod to'yxonasi");
+        showToast("Manzil nusxalandi: G62X+HJ2, Khayravat");
       });
     } else {
       var input = document.createElement("input");
@@ -442,11 +374,11 @@
       input.select();
       document.execCommand("copy");
       document.body.removeChild(input);
-      showToast("Manzil nusxalandi: Xolmurod to'yxonasi");
+      showToast("Manzil nusxalandi: G62X+HJ2, Khayravat");
     }
   };
 
-  // --- 9. Toast Xabarnoma ---
+  // --- 10. Toast Xabarnoma ---
   function showToast(msg) {
     var existing = document.getElementById("weddingToast");
     if (existing && existing.parentNode) {
@@ -470,126 +402,6 @@
     }, 3500);
   }
 
-  // --- 10. RSVP va Tilaklar Ro'yxati (Interactive Guestbook) ---
-  var defaultWishes = [
-    {
-      name: "Otabek & Malika",
-      attendance: "Albatta boramiz 💐",
-      wishes: "Muhammadali va Hayotxon, baxtingiz butun, muhabbatingiz abadiy bo'lsin! Qo'sha qaringlar!",
-      date: "Bugun, 14:20"
-    },
-    {
-      name: "Akromjon do'stingiz",
-      attendance: "Albatta boraman 💐",
-      wishes: "Jondan aziz do'stim Muhammadali! Yangi xonadoningizga tinchlik, fayz va cheksiz baxt tilayman!",
-      date: "Kecha, 18:45"
-    },
-    {
-      name: "Zulayho opa oilasi bilan",
-      attendance: "Albatta boramiz 💐",
-      wishes: "Ilohim ko'z tegmasin! Go'zal juftlik, baxtli va saodatli oilalardan bo'linglar!",
-      date: "16-noyabr"
-    }
-  ];
-
-  function loadWishes() {
-    var stored = localStorage.getItem("wedding_wishes_mh");
-    var list = stored ? JSON.parse(stored) : defaultWishes;
-    renderWishes(list);
-  }
-
-  function renderWishes(list) {
-    var container = document.getElementById("wishesList");
-    if (!container) return;
-    container.innerHTML = "";
-
-    list.slice(0, 10).forEach(function (item) {
-      var card = document.createElement("div");
-      card.className = "wish-card";
-      card.innerHTML =
-        '<div class="wish-header">' +
-        '  <strong class="wish-name"><i class="fas fa-heart" style="color: #bc8887; margin-right: 6px;"></i>' + escapeHtml(item.name) + '</strong>' +
-        '  <span class="wish-tag">' + escapeHtml(item.attendance) + '</span>' +
-        '</div>' +
-        '<p class="wish-text">"' + escapeHtml(item.wishes) + '"</p>' +
-        '<span class="wish-time">' + (item.date || "Hozirgina") + '</span>';
-      container.appendChild(card);
-    });
-  }
-
-  function escapeHtml(text) {
-    if (!text) return "";
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
-  window.submitRsvp = function (event) {
-    if (event) event.preventDefault();
-
-    var nameInput = document.getElementById("rsvpName");
-    var attendInput = document.getElementById("rsvpAttend");
-    var guestsInput = document.getElementById("rsvpGuests");
-    var messageInput = document.getElementById("rsvpMessage");
-
-    var name = nameInput ? nameInput.value.trim() : "";
-    var attend = attendInput ? attendInput.value : "Albatta boraman 💐";
-    var guests = guestsInput ? guestsInput.value : "1";
-    var message = messageInput ? messageInput.value.trim() : "";
-
-    if (!name) {
-      alert("Iltimos, ismingizni kiriting!");
-      if (nameInput) nameInput.focus();
-      return false;
-    }
-
-    if (!message) {
-      message = "To'yingiz muborak bo'lsin! Baxtli bo'linglar!";
-    }
-
-    var stored = localStorage.getItem("wedding_wishes_mh");
-    var list = stored ? JSON.parse(stored) : defaultWishes.slice();
-
-    var newWish = {
-      name: name,
-      attendance: attend + " (" + guests + " kishi)",
-      wishes: message,
-      date: "Hozirgina"
-    };
-
-    list.unshift(newWish);
-    localStorage.setItem("wedding_wishes_mh", JSON.stringify(list));
-
-    renderWishes(list);
-
-    // Formani tozalash
-    if (nameInput) nameInput.value = "";
-    if (messageInput) messageInput.value = "";
-
-    // Yuraklar va qutlov
-    burstHearts(window.innerWidth / 2, window.innerHeight * 0.7);
-    showToast("Rahmat! Ezgu tilaklaringiz qabul qilindi 💐");
-
-    // Telegramga yuborish taklifi
-    var sendTg = confirm("Ezgu tilaklaringizni Muhammadali & Hayotxonga Telegram orqali ham yuborishni istaysizmi?");
-    if (sendTg) {
-      var tgText = encodeURIComponent(
-        "Assalomu alaykum, Muhammadali & Hayotxon!\n\n" +
-        "Visol oqshomingiz bilan chin qalbimdan muborakbod etaman!\n" +
-        "💐 Mehmon: " + name + "\n" +
-        "📌 Holat: " + attend + " (" + guests + " kishi)\n" +
-        "💌 Tilak: " + message + "\n\n" +
-        "Baxtingizga ko'z tegmasin, qo'sha qaringlar!"
-      );
-      window.open("https://t.me/share/url?url=" + encodeURIComponent(window.location.href) + "&text=" + tgText, "_blank");
-    }
-
-    return false;
-  };
-
   // --- 11. Taklifnomani Yaqinlarga Ulashish ---
   window.shareInvitation = function (platform) {
     var url = window.location.href;
@@ -597,7 +409,7 @@
     var text = "Ikki qalb, bir taqdir, bir umrga tutashgan muhabbat...\n" +
       "Muhammadali & Hayotxonning visol oqshomi to'y taklifnomasi.\n" +
       "📅 Sana: 21-22 noyabr, 18:00\n" +
-      "📍 Manzil: Xolmurod to'yxonasi\n\n" +
+      "📍 Manzil: Xolmurod to'yxonasi (G62X+HJ2, Khayravat)\n\n" +
       "Taklifnomani ko'rish uchun havola:\n" + url;
 
     if (platform === "telegram") {
@@ -617,31 +429,10 @@
     }
   };
 
-  // --- 12. Galereya Rasmlarini Katta Qilib Ko'rish (Lightbox) ---
-  window.openLightbox = function (imgSrc, title, subtitle) {
-    var modal = document.getElementById("imageLightboxModal");
-    var modalImg = document.getElementById("lightboxImage");
-    var modalTitle = document.getElementById("lightboxTitle");
-    var modalSubtitle = document.getElementById("lightboxSubtitle");
-
-    if (!modal) return;
-    if (modalImg) modalImg.src = imgSrc;
-    if (modalTitle) modalTitle.innerText = title || "Muhammadali & Hayotxon";
-    if (modalSubtitle) modalSubtitle.innerText = subtitle || "Visol oqshomi xotiralari";
-
-    modal.classList.add("is-active");
-  };
-
-  window.closeLightbox = function () {
-    var modal = document.getElementById("imageLightboxModal");
-    if (modal) modal.classList.remove("is-active");
-  };
-
-  // --- 13. Sahifa Yuklanganda Ishga Tushirish ---
+  // --- 12. Sahifa Yuklanganda Ishga Tushirish ---
   document.addEventListener("DOMContentLoaded", function () {
     initCountdown();
     initPetalsCanvas();
-    loadWishes();
 
     // AOS animatsiyalarini faollashtirish
     if (window.AOS) {

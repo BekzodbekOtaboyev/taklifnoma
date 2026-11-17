@@ -5,7 +5,7 @@ Muhammadali & Hayotxonning visol oqshomi uchun maxsus yaratilgan interaktiv va a
 ## 📌 Asosiy Ma'lumotlar
 - **Kelin va Kuyov:** Muhammadali & Hayotxon
 - **Sana:** 21-22 Noyabr, Soat 18:00
-- **Manzil:** Xolmurod to'yxonasi
+- **Manzil:** G62X+HJ2, Unnamed Road, Khayravat, Oʻzbekiston (Xayrobod to'yxonasi)
 - **Fon musiqasi:** Ziyoda — «Kelibdi»
 
 ## ✨ Imkoniyatlar
