@@ -1,69 +1,23 @@
+# 💍 Muhammadali & Hayotxon — Visol Oqshomi To'y Taklifnomasi
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/abhisheknaiidu/abhisheknaiidu/master/code.gif" width="300" />
-</p>
+Muhammadali & Hayotxonning visol oqshomi uchun maxsus yaratilgan interaktiv va animatsiyali to'y taklifnomasi veb-sayti.
 
-<h1 align="center">👋 Hi there, I'm Bekzodbek Otaboyev!</h1>
-<h3 align="center">Web Developer • Aiogram Bot Developer • AI Enthusiast</h3>
+## 📌 Asosiy Ma'lumotlar
+- **Kelin va Kuyov:** Muhammadali & Hayotxon
+- **Sana:** 21-22 Noyabr, Soat 18:00
+- **Manzil:** Xolmurod to'yxonasi
+- **Fon musiqasi:** Ziyoda — «Kelibdi»
 
----
+## ✨ Imkoniyatlar
+- ✉️ **Konvert ochilish animatsiyasi** (Taklifnomani ochish)
+- 🎵 **Orqa fon musiqasi** (Ziyoda — «Kelibdi» audio fayli + interaktiv mini pleyer)
+- 🌸 **Tushayotgan gulbarglar animatsiyasi** (HTML5 Canvas)
+- ⏳ **Jonli hisoblagich** (Countdown timer: Kun, Soat, Daqiqa, Soniya)
+- 📅 **Taqvim integratsiyasi** (Google Calendar & .ics yuklab olish)
+- 📍 **Manzil va xarita** (Google Maps & Yandex Maps navigatsiyasi)
+- 📸 **Baxt lahzalari galereyasi** (Lightbox bilan)
+- 💌 **Tashrifni tasdiqlash (RSVP)** va jonli tilaklar taxtasi
+- 📱 **100% Mobil va Desktop moslashuvchanlik** (Telegram va smartfonlar uchun mukammal)
 
-## 🚀 About Me
-🔹 I work in both **Frontend & Backend** development  
-🔹 Passionate about **Python**, **JavaScript**, **Aiogram**, and **AI technologies**  
-🔹 Preparing for universities in **Saudi Arabia** and **Turkey**  
-🔹 I also create landing pages, Telegram bots, animations, and graphic content
-
----
-
-## 🛠 Tech Stack
-
-### 💻 Frontend
-<p>
-  <img src="https://skillicons.dev/icons?i=html,css,js,ts,react,bootstrap,tailwind" />
-</p>
-
-### 🧠 Backend & Bots
-<p>
-  <img src="https://skillicons.dev/icons?i=python,fastapi,nodejs" />
-</p>
-
-### ⚙️ Tools
-<p>
-  <img src="https://skillicons.dev/icons?i=git,github,vscode,figma,replit" />
-</p>
-
----
-
-## 🤖 My Telegram Bots
-- **@Bek_qoravulbot** — A bot that detects and removes ads automatically
-- **@bek_anonim_chat_bot** — Anonymous questions & answers bot
-- **instagram_video** - This bot a instagram video downloated bot
----
-
-## 📊 GitHub Stats
-<p align="center">
-<img src="https://github-readme-stats.vercel.app/api?username=BekzodbekOtaboyev&show_icons=true&theme=tokyonight" height="170" />
-<img src="https://github-readme-stats.vercel.app/api/top-langs/?username=BekzodbekOtaboyev&layout=compact&theme=tokyonight" height="170" />
-</p>
-
-<p align="center">
-<img src="https://github-readme-streak-stats.herokuapp.com/?user=BekzodbekOtaboyev&theme=tokyonight" height="170" />
-</p>
-
----
-
-## 🌟 Goals
-- Become a professional web developer  
-- Build AI-powered projects  
-- Study abroad in **Saudi Arabia or Turkey**
-
----
-
-## 📬 Contact
-📩 **Telegram:** @uzbek_developer and @js_developer 
-📧 **Email:** otaboyev008@gmail.com
-
----
-
-<p align="center">⭐ If you liked my profile, don't forget to leave a star!</p>
+## 🚀 Ishga tushirish
+Brauzerda `index.html` faylini oching yoki GitHub Pages / Netlify orqali tarqating.

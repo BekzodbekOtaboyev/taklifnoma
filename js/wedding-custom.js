@@ -1,0 +1,669 @@
+/**
+ * Muhammadali & Hayotxon - Visol Oqshomi
+ * Maxsus interaktiv va animatsiyali skriptlar
+ */
+
+(function () {
+  "use strict";
+
+  // --- 1. O'zgaruvchilar va Ma'lumotlar ---
+  var TARGET_DATE_STRING = "2026/11/21 18:00:00"; // 21-Noyabr 18:00
+  var YT_VIDEO_ID = "AFRrBAMtJe0"; // Ziyoda - Kelibdi (https://www.youtube.com/watch?v=AFRrBAMtJe0)
+  var isAudioPlaying = false;
+  var audioContext = null;
+  var musicTimer = null;
+  var petalsRunning = true;
+  var ytPlayer = null;
+  var ytPlayerReady = false;
+  var shouldPlayWhenReady = false;
+
+  // --- 2. YouTube IFrame API Integratsiyasi (Ziyoda - Kelibdi) ---
+  window.onYouTubeIframeAPIReady = function () {
+    try {
+      ytPlayer = new YT.Player('ytMusicPlayer', {
+        height: '100%',
+        width: '100%',
+        videoId: YT_VIDEO_ID,
+        playerVars: {
+          autoplay: 0,
+          controls: 1,
+          loop: 1,
+          playlist: YT_VIDEO_ID,
+          modestbranding: 1,
+          playsinline: 1,
+          rel: 0,
+          showinfo: 0,
+          enablejsapi: 1
+        },
+        events: {
+          onReady: function (event) {
+            ytPlayerReady = true;
+            if (shouldPlayWhenReady) {
+              event.target.playVideo();
+            }
+          },
+          onStateChange: function (event) {
+            if (event.data === YT.PlayerState.PLAYING) {
+              setMusicUIState(true);
+              stopFallbackAudio();
+            } else if (event.data === YT.PlayerState.PAUSED) {
+              setMusicUIState(false);
+            } else if (event.data === YT.PlayerState.ENDED) {
+              event.target.playVideo(); // loop
+            }
+          },
+          onError: function (err) {
+            console.log("YouTube pleerida xatolik yuz berdi, zaxira audiodan foydalaniladi:", err);
+            startFallbackAudio();
+          }
+        }
+      });
+    } catch (e) {
+      console.log("YouTube API xatoligi:", e);
+    }
+  };
+
+  function setMusicUIState(playing) {
+    isAudioPlaying = playing;
+    var musicBtn = document.getElementById("musicToggleBtn");
+    var musicIcon = document.getElementById("musicIcon");
+    var musicPill = document.getElementById("musicPill");
+    var musicTrackTitle = document.getElementById("musicTrackTitle");
+
+    if (playing) {
+      if (musicBtn) musicBtn.classList.add("playing");
+      if (musicIcon) musicIcon.className = "fas fa-compact-disc fa-spin";
+      if (musicPill) musicPill.classList.add("playing");
+      if (musicTrackTitle) musicTrackTitle.innerText = "Ziyoda — Kelibdi 🎵";
+    } else {
+      if (musicBtn) musicBtn.classList.remove("playing");
+      if (musicIcon) musicIcon.className = "fas fa-music";
+      if (musicPill) musicPill.classList.remove("playing");
+      if (musicTrackTitle) musicTrackTitle.innerText = "Ziyoda — Kelibdi (Pauza)";
+    }
+  }
+
+  window.toggleYtPreview = function () {
+    var container = document.getElementById("ytPlayerContainer");
+    if (container) {
+      container.classList.toggle("show");
+    }
+  };
+
+  // --- 3. Taklifnomani Ochish (Envelope Animation) ---
+  window.openInvitation = function () {
+    var cover = document.getElementById("invitationCover");
+    if (cover) {
+      cover.classList.add("opened");
+      setTimeout(function () {
+        cover.style.display = "none";
+      }, 1000);
+    }
+
+    // Musiqani boshlash (Ziyoda - Kelibdi)
+    toggleMusic(true);
+
+    // Qaynoq qutlovlar va yuraklar otilishi (Confetti)
+    burstHearts(window.innerWidth / 2, window.innerHeight / 2);
+
+    // Sahifani asosiy qismiga silliq olib o'tish
+    var homeSection = document.getElementById("home");
+    if (homeSection) {
+      homeSection.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  // --- 4. Musiqani Boshqarish (Ziyoda — Kelibdi) ---
+  window.toggleMusic = function (forcePlay) {
+    var audioTag = document.getElementById("weddingAudio");
+
+    if (forcePlay === true) {
+      isAudioPlaying = true;
+    } else if (forcePlay === false) {
+      isAudioPlaying = false;
+    } else {
+      isAudioPlaying = !isAudioPlaying;
+    }
+
+    if (isAudioPlaying) {
+      // 1. Asosiy va kafolatlangan audio: mahalliy Ziyoda - Kelibdi fayli
+      if (audioTag) {
+        audioTag.volume = 1.0;
+        var playPromise = audioTag.play();
+        if (playPromise !== undefined) {
+          playPromise.then(function () {
+            setMusicUIState(true);
+          }).catch(function (err) {
+            console.log("Audio autoplay cheklovi yoki xatolik:", err);
+            // Foydalanuvchiga musiqani yoqish haqida eslatma
+            showToast("Musiqani yoqish uchun pastdagi musiqa tugmasini bosing 🎵");
+          });
+        }
+      }
+
+      // 2. Agar YouTube mini pleeri ochilgan bo'lsa, uni ham sinxron yurgazish
+      if (ytPlayer && ytPlayerReady && typeof ytPlayer.playVideo === "function") {
+        try {
+          ytPlayer.playVideo();
+        } catch (e) {}
+      }
+
+      setMusicUIState(true);
+    } else {
+      if (audioTag) {
+        try {
+          audioTag.pause();
+        } catch (e) {}
+      }
+      if (ytPlayer && typeof ytPlayer.pauseVideo === "function") {
+        try {
+          ytPlayer.pauseVideo();
+        } catch (e) {}
+      }
+      setMusicUIState(false);
+    }
+  };
+
+  // Zaxira audio (agar YouTube ochilmasa yoki oflayn bo'lsa)
+  function startFallbackAudio() {
+    var audioTag = document.getElementById("weddingAudio");
+    if (audioTag) {
+      audioTag.play().catch(function () {
+        initAudioSynth();
+        clearTimeout(musicTimer);
+        runMelodyLoop();
+      });
+    } else {
+      initAudioSynth();
+      clearTimeout(musicTimer);
+      runMelodyLoop();
+    }
+  }
+
+  function stopFallbackAudio() {
+    var audioTag = document.getElementById("weddingAudio");
+    if (audioTag) {
+      try { audioTag.pause(); } catch (e) {}
+    }
+    clearTimeout(musicTimer);
+  }
+
+  // --- 5. Romantik Sintezator (Zaxira) ---
+  function initAudioSynth() {
+    try {
+      var AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!audioContext && AudioCtx) {
+        audioContext = new AudioCtx();
+      }
+      if (audioContext && audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+    } catch (e) {
+      console.log("AudioContext not supported", e);
+    }
+  }
+
+  var melodyNotes = [
+    587.33, 440.00, 493.88, 369.99, 392.00, 293.66, 392.00, 440.00,
+    587.33, 659.25, 739.99, 587.33, 493.88, 440.00, 392.00, 440.00,
+    739.99, 659.25, 587.33, 523.25, 493.88, 440.00, 392.00, 369.99,
+    392.00, 440.00, 493.88, 587.33, 659.25, 739.99, 880.00, 739.99
+  ];
+  var noteIndex = 0;
+
+  function playHarpNote(freq) {
+    if (!audioContext || !isAudioPlaying) return;
+    try {
+      var osc = audioContext.createOscillator();
+      var gain = audioContext.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+      gain.gain.setValueAtTime(0.12, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 1.2);
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start();
+      osc.stop(audioContext.currentTime + 1.2);
+    } catch (e) {}
+  }
+
+  function runMelodyLoop() {
+    if (!isAudioPlaying) return;
+    var freq = melodyNotes[noteIndex % melodyNotes.length];
+    playHarpNote(freq);
+    noteIndex++;
+    musicTimer = setTimeout(runMelodyLoop, 450);
+  }
+
+  // --- 4. Jonli Hisoblagich (Countdown Timer) ---
+  function initCountdown() {
+    var targetDate = new Date(TARGET_DATE_STRING).getTime();
+
+    function update() {
+      var now = new Date().getTime();
+      var diff = targetDate - now;
+
+      var daysEl = document.getElementById("cdDays");
+      var hoursEl = document.getElementById("cdHours");
+      var minutesEl = document.getElementById("cdMinutes");
+      var secondsEl = document.getElementById("cdSeconds");
+
+      if (diff <= 0) {
+        if (daysEl) daysEl.innerText = "00";
+        if (hoursEl) hoursEl.innerText = "00";
+        if (minutesEl) minutesEl.innerText = "00";
+        if (secondsEl) secondsEl.innerText = "00";
+        var statusEl = document.getElementById("countdownStatus");
+        if (statusEl) {
+          statusEl.innerText = "🎉 Visol Oqshomi Boshlandi! Muborak bo'lsin!";
+        }
+        return;
+      }
+
+      var d = Math.floor(diff / (1000 * 60 * 60 * 24));
+      var h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      var m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      var s = Math.floor((diff % (1000 * 60)) / 1000);
+
+      var ds = d < 10 ? "0" + d : d;
+      var hs = h < 10 ? "0" + h : h;
+      var ms = m < 10 ? "0" + m : m;
+      var ss = s < 10 ? "0" + s : s;
+
+      if (daysEl && daysEl.innerText !== String(ds)) daysEl.innerText = ds;
+      if (hoursEl && hoursEl.innerText !== String(hs)) hoursEl.innerText = hs;
+      if (minutesEl && minutesEl.innerText !== String(ms)) minutesEl.innerText = ms;
+      if (secondsEl) secondsEl.innerText = ss;
+    }
+
+    update();
+    setInterval(update, 1000);
+  }
+
+  // --- 5. Tushayotgan Gul Barglari Animatsiyasi (Falling Petals Canvas) ---
+  function initPetalsCanvas() {
+    var canvas = document.getElementById("petalsCanvas");
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener("resize", resize);
+
+    var petalCount = window.innerWidth < 600 ? 25 : 45;
+    var petals = [];
+
+    var colors = [
+      "rgba(255, 183, 197, 0.75)", // Mayin pushti
+      "rgba(244, 202, 211, 0.7)",  // Gulbarg
+      "rgba(216, 169, 168, 0.75)", // Och atirgul
+      "rgba(255, 230, 235, 0.8)",  // Oq-pushti
+      "rgba(218, 165, 32, 0.6)"    // Zarrin oltin zar
+    ];
+
+    for (var i = 0; i < petalCount; i++) {
+      petals.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        r: Math.random() * 8 + 6,
+        d: Math.random() * petalCount,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        tilt: Math.floor(Math.random() * 10) - 10,
+        tiltAngleInc: (Math.random() * 0.07) + 0.03,
+        tiltAngle: 0,
+        speed: Math.random() * 1.5 + 0.8
+      });
+    }
+
+    function draw() {
+      if (!petalsRunning) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (var i = 0; i < petalCount; i++) {
+        var p = petals[i];
+        ctx.beginPath();
+        ctx.lineWidth = p.r;
+        ctx.strokeStyle = p.color;
+        ctx.moveTo(p.x + p.tilt + p.r / 3, p.y);
+        ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r);
+        ctx.stroke();
+
+        p.tiltAngle += p.tiltAngleInc;
+        p.y += (Math.cos(p.d) + 1 + p.r / 8) * p.speed * 0.5;
+        p.x += Math.sin(p.tiltAngle) * 1.5;
+        p.tilt = Math.sin(p.tiltAngle) * 12;
+
+        if (p.y > canvas.height) {
+          p.x = Math.random() * canvas.width;
+          p.y = -20;
+          p.tilt = Math.floor(Math.random() * 10) - 10;
+        }
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    draw();
+
+    window.togglePetals = function() {
+      petalsRunning = !petalsRunning;
+      var btn = document.getElementById("petalsToggleBtn");
+      if (petalsRunning) {
+        if (btn) btn.innerText = "🌸 Gullar: Yoqilgan";
+        draw();
+      } else {
+        if (btn) btn.innerText = "🌸 Gullar: O'chirilgan";
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    };
+  }
+
+  // --- 6. Yuraklar Otilishi (Heart Confetti Burst) ---
+  function burstHearts(originX, originY) {
+    var count = 30;
+    var container = document.body;
+
+    for (var i = 0; i < count; i++) {
+      var heart = document.createElement("div");
+      heart.className = "floating-heart-burst";
+      heart.innerHTML = ["❤️", "💖", "💐", "✨", "🌸", "💍"][Math.floor(Math.random() * 6)];
+      heart.style.left = (originX || window.innerWidth / 2) + "px";
+      heart.style.top = (originY || window.innerHeight / 2) + "px";
+      heart.style.position = "fixed";
+      heart.style.zIndex = "999999";
+      heart.style.pointerEvents = "none";
+      heart.style.fontSize = Math.floor(Math.random() * 20 + 16) + "px";
+
+      var angle = Math.random() * Math.PI * 2;
+      var dist = Math.random() * 220 + 60;
+      var destX = Math.cos(angle) * dist;
+      var destY = Math.sin(angle) * dist - 80;
+
+      heart.style.transition = "all 1.6s cubic-bezier(0.25, 1, 0.5, 1)";
+      container.appendChild(heart);
+
+      (function (el, dx, dy) {
+        setTimeout(function () {
+          el.style.transform = "translate(" + dx + "px, " + dy + "px) scale(1.4)";
+          el.style.opacity = "0";
+        }, 20);
+        setTimeout(function () {
+          if (el.parentNode) el.parentNode.removeChild(el);
+        }, 1700);
+      })(heart, destX, destY);
+    }
+  }
+
+  // --- 7. Taqvimga Saqlash (.ics fayl yuklash) ---
+  window.downloadICS = function () {
+    var icsData = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Muhammadali & Hayotxon//Visol Oqshomi//UZ",
+      "CALSCALE:GREGORIAN",
+      "METHOD:PUBLISH",
+      "BEGIN:VEVENT",
+      "SUMMARY:Muhammadali va Hayotxonning Visol Oqshomi",
+      "DESCRIPTION:Ikki qalb, bir taqdir, bir umrga tutashgan muhabbat... Sizni visol oqshomimizda kutamiz!",
+      "LOCATION:Xolmurod to\\'yxonasi",
+      "DTSTART:20261121T130000Z",
+      "DTEND:20261121T180000Z",
+      "STATUS:CONFIRMED",
+      "SEQUENCE:0",
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+
+    var blob = new Blob([icsData], { type: "text/calendar;charset=utf-8" });
+    var link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute("download", "Muhammadali_Hayotxon_Visol_Oqshomi.ics");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    showToast("Taqvim fayli (.ics) yuklab olindi! Telefoningiz taqvimiga qo'shishingiz mumkin.");
+  };
+
+  // --- 8. Manzilni Nusxalash ---
+  window.copyAddress = function () {
+    var address = "Xolmurod to'yxonasi, 21-22 noyabr, 18:00";
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(address).then(function () {
+        showToast("Manzil nusxalandi: Xolmurod to'yxonasi");
+      });
+    } else {
+      var input = document.createElement("input");
+      input.value = address;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+      showToast("Manzil nusxalandi: Xolmurod to'yxonasi");
+    }
+  };
+
+  // --- 9. Toast Xabarnoma ---
+  function showToast(msg) {
+    var existing = document.getElementById("weddingToast");
+    if (existing && existing.parentNode) {
+      existing.parentNode.removeChild(existing);
+    }
+    var toast = document.createElement("div");
+    toast.id = "weddingToast";
+    toast.className = "wedding-toast";
+    toast.innerText = msg;
+    document.body.appendChild(toast);
+
+    setTimeout(function () {
+      toast.classList.add("show");
+    }, 50);
+
+    setTimeout(function () {
+      toast.classList.remove("show");
+      setTimeout(function () {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 500);
+    }, 3500);
+  }
+
+  // --- 10. RSVP va Tilaklar Ro'yxati (Interactive Guestbook) ---
+  var defaultWishes = [
+    {
+      name: "Otabek & Malika",
+      attendance: "Albatta boramiz 💐",
+      wishes: "Muhammadali va Hayotxon, baxtingiz butun, muhabbatingiz abadiy bo'lsin! Qo'sha qaringlar!",
+      date: "Bugun, 14:20"
+    },
+    {
+      name: "Akromjon do'stingiz",
+      attendance: "Albatta boraman 💐",
+      wishes: "Jondan aziz do'stim Muhammadali! Yangi xonadoningizga tinchlik, fayz va cheksiz baxt tilayman!",
+      date: "Kecha, 18:45"
+    },
+    {
+      name: "Zulayho opa oilasi bilan",
+      attendance: "Albatta boramiz 💐",
+      wishes: "Ilohim ko'z tegmasin! Go'zal juftlik, baxtli va saodatli oilalardan bo'linglar!",
+      date: "16-noyabr"
+    }
+  ];
+
+  function loadWishes() {
+    var stored = localStorage.getItem("wedding_wishes_mh");
+    var list = stored ? JSON.parse(stored) : defaultWishes;
+    renderWishes(list);
+  }
+
+  function renderWishes(list) {
+    var container = document.getElementById("wishesList");
+    if (!container) return;
+    container.innerHTML = "";
+
+    list.slice(0, 10).forEach(function (item) {
+      var card = document.createElement("div");
+      card.className = "wish-card";
+      card.innerHTML =
+        '<div class="wish-header">' +
+        '  <strong class="wish-name"><i class="fas fa-heart" style="color: #bc8887; margin-right: 6px;"></i>' + escapeHtml(item.name) + '</strong>' +
+        '  <span class="wish-tag">' + escapeHtml(item.attendance) + '</span>' +
+        '</div>' +
+        '<p class="wish-text">"' + escapeHtml(item.wishes) + '"</p>' +
+        '<span class="wish-time">' + (item.date || "Hozirgina") + '</span>';
+      container.appendChild(card);
+    });
+  }
+
+  function escapeHtml(text) {
+    if (!text) return "";
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  window.submitRsvp = function (event) {
+    if (event) event.preventDefault();
+
+    var nameInput = document.getElementById("rsvpName");
+    var attendInput = document.getElementById("rsvpAttend");
+    var guestsInput = document.getElementById("rsvpGuests");
+    var messageInput = document.getElementById("rsvpMessage");
+
+    var name = nameInput ? nameInput.value.trim() : "";
+    var attend = attendInput ? attendInput.value : "Albatta boraman 💐";
+    var guests = guestsInput ? guestsInput.value : "1";
+    var message = messageInput ? messageInput.value.trim() : "";
+
+    if (!name) {
+      alert("Iltimos, ismingizni kiriting!");
+      if (nameInput) nameInput.focus();
+      return false;
+    }
+
+    if (!message) {
+      message = "To'yingiz muborak bo'lsin! Baxtli bo'linglar!";
+    }
+
+    var stored = localStorage.getItem("wedding_wishes_mh");
+    var list = stored ? JSON.parse(stored) : defaultWishes.slice();
+
+    var newWish = {
+      name: name,
+      attendance: attend + " (" + guests + " kishi)",
+      wishes: message,
+      date: "Hozirgina"
+    };
+
+    list.unshift(newWish);
+    localStorage.setItem("wedding_wishes_mh", JSON.stringify(list));
+
+    renderWishes(list);
+
+    // Formani tozalash
+    if (nameInput) nameInput.value = "";
+    if (messageInput) messageInput.value = "";
+
+    // Yuraklar va qutlov
+    burstHearts(window.innerWidth / 2, window.innerHeight * 0.7);
+    showToast("Rahmat! Ezgu tilaklaringiz qabul qilindi 💐");
+
+    // Telegramga yuborish taklifi
+    var sendTg = confirm("Ezgu tilaklaringizni Muhammadali & Hayotxonga Telegram orqali ham yuborishni istaysizmi?");
+    if (sendTg) {
+      var tgText = encodeURIComponent(
+        "Assalomu alaykum, Muhammadali & Hayotxon!\n\n" +
+        "Visol oqshomingiz bilan chin qalbimdan muborakbod etaman!\n" +
+        "💐 Mehmon: " + name + "\n" +
+        "📌 Holat: " + attend + " (" + guests + " kishi)\n" +
+        "💌 Tilak: " + message + "\n\n" +
+        "Baxtingizga ko'z tegmasin, qo'sha qaringlar!"
+      );
+      window.open("https://t.me/share/url?url=" + encodeURIComponent(window.location.href) + "&text=" + tgText, "_blank");
+    }
+
+    return false;
+  };
+
+  // --- 11. Taklifnomani Yaqinlarga Ulashish ---
+  window.shareInvitation = function (platform) {
+    var url = window.location.href;
+    var title = "Muhammadali & Hayotxon — Visol Oqshomi To'y Taklifnomasi";
+    var text = "Ikki qalb, bir taqdir, bir umrga tutashgan muhabbat...\n" +
+      "Muhammadali & Hayotxonning visol oqshomi to'y taklifnomasi.\n" +
+      "📅 Sana: 21-22 noyabr, 18:00\n" +
+      "📍 Manzil: Xolmurod to'yxonasi\n\n" +
+      "Taklifnomani ko'rish uchun havola:\n" + url;
+
+    if (platform === "telegram") {
+      window.open("https://t.me/share/url?url=" + encodeURIComponent(url) + "&text=" + encodeURIComponent(text), "_blank");
+    } else if (platform === "whatsapp") {
+      window.open("https://api.whatsapp.com/send?text=" + encodeURIComponent(text), "_blank");
+    } else {
+      if (navigator.share) {
+        navigator.share({
+          title: title,
+          text: text,
+          url: url
+        }).catch(function () {});
+      } else {
+        copyAddress();
+      }
+    }
+  };
+
+  // --- 12. Galereya Rasmlarini Katta Qilib Ko'rish (Lightbox) ---
+  window.openLightbox = function (imgSrc, title, subtitle) {
+    var modal = document.getElementById("imageLightboxModal");
+    var modalImg = document.getElementById("lightboxImage");
+    var modalTitle = document.getElementById("lightboxTitle");
+    var modalSubtitle = document.getElementById("lightboxSubtitle");
+
+    if (!modal) return;
+    if (modalImg) modalImg.src = imgSrc;
+    if (modalTitle) modalTitle.innerText = title || "Muhammadali & Hayotxon";
+    if (modalSubtitle) modalSubtitle.innerText = subtitle || "Visol oqshomi xotiralari";
+
+    modal.classList.add("is-active");
+  };
+
+  window.closeLightbox = function () {
+    var modal = document.getElementById("imageLightboxModal");
+    if (modal) modal.classList.remove("is-active");
+  };
+
+  // --- 13. Sahifa Yuklanganda Ishga Tushirish ---
+  document.addEventListener("DOMContentLoaded", function () {
+    initCountdown();
+    initPetalsCanvas();
+    loadWishes();
+
+    // AOS animatsiyalarini faollashtirish
+    if (window.AOS) {
+      window.AOS.init({
+        easing: "ease-out-cubic",
+        duration: 900,
+        once: false,
+        offset: 50
+      });
+    }
+
+    // Preloaderni yumshoq yashirish
+    var preloader = document.querySelector(".preloader-wrapper");
+    if (preloader) {
+      setTimeout(function () {
+        preloader.style.opacity = "0";
+        preloader.style.transition = "opacity 0.6s ease";
+        setTimeout(function () {
+          preloader.style.display = "none";
+        }, 600);
+      }, 500);
+    }
+  });
+
+})();
